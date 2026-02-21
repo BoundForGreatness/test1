@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>炫式NLP 闖關遊戲</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --cream:#FFF8F0;--coral:#FF6B35;--navy:#1a1a2e;--gold:#f39c12;
+  --green:#2ecc71;--red:#e74c3c;--purple:#9b59b6;--blue:#3498db;--teal:#1abc9c;
+}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--cream);min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;padding:12px 10px 80px;
+  user-select:none;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;
+  background-image:radial-gradient(circle,#e0d6cc 1px,transparent 1px);
+  background-size:22px 22px;opacity:0.4;pointer-events:none;z-index:0;}
+
+/* ── OVERLAYS ── */
+#flash{position:fixed;inset:0;pointer-events:none;z-index:300;opacity:0;transition:opacity 0.08s;}
+#eventBanner{
+  position:fixed;top:0;left:0;right:0;z-index:250;padding:16px 20px;
+  text-align:center;font-size:16px;font-weight:900;color:#fff;
+  transform:translateY(-100%);transition:transform 0.4s cubic-bezier(.34,1.56,.64,1);
+  letter-spacing:1px;line-height:1.5;
+}
+#eventBanner.show{transform:translateY(0);}
+#eventBanner.speed{background:linear-gradient(135deg,#e74c3c,#c0392b);}
+#eventBanner.gold{background:linear-gradient(135deg,#f39c12,#e67e22);}
+#eventBanner.blue{background:linear-gradient(135deg,#3498db,#2980b9);}
+#eventBanner.purple{background:linear-gradient(135deg,#9b59b6,#8e44ad);}
+#eventBanner.teal{background:linear-gradient(135deg,#1abc9c,#16a085);}
+
+/* ── LEVEL UP ── */
+#luOverlay{
+  position:fixed;inset:0;z-index:400;background:rgba(255,248,240,0.97);
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;
+}
+#luOverlay.show{display:flex;animation:fadeIn 0.3s ease;}
+.lu-icon{font-size:72px;}
+.lu-title{font-size:36px;font-weight:900;color:var(--coral);}
+.lu-next{font-size:18px;font-weight:900;color:var(--navy);}
+.lu-desc{font-size:13px;color:#aaa;font-weight:700;text-align:center;max-width:300px;line-height:1.6;}
+.lu-xp{font-size:13px;color:var(--gold);font-weight:700;}
+.lu-btn{margin-top:12px;background:var(--coral);color:#fff;border:none;
+  padding:13px 36px;border-radius:40px;font-size:15px;font-weight:900;cursor:pointer;
+  box-shadow:3px 3px 0 #c0390d;font-family:'Noto Sans TC',sans-serif;transition:transform 0.1s;}
+.lu-btn:hover{transform:translateY(-2px);}
+
+/* ── CHAPTER SELECT ── */
+#chapterSelect{
+  width:100%;max-width:580px;position:relative;z-index:1;
+}
+.cs-header{text-align:center;margin-bottom:20px;}
+.cs-logo{font-size:26px;font-weight:900;color:var(--navy);margin-bottom:4px;}
+.cs-logo span{color:var(--coral);}
+.cs-sub{font-size:12px;color:#aaa;font-weight:700;}
+.ch-grid{display:flex;flex-direction:column;gap:10px;}
+.ch-card{
+  background:#fff;border:2.5px solid #e0d6cc;border-radius:14px;
+  padding:16px 18px;cursor:pointer;box-shadow:3px 3px 0 #e0d6cc;
+  transition:all 0.15s;display:flex;align-items:center;gap:14px;
+}
+.ch-card:hover{transform:translateY(-2px);border-color:var(--coral);box-shadow:4px 4px 0 var(--coral);}
+.ch-card.locked{opacity:0.45;cursor:not-allowed;filter:grayscale(0.5);}
+.ch-card.locked:hover{transform:none;border-color:#e0d6cc;box-shadow:3px 3px 0 #e0d6cc;}
+.ch-card.done{border-color:var(--green);box-shadow:3px 3px 0 #b8ede6;}
+.ch-icon{font-size:28px;min-width:36px;text-align:center;}
+.ch-info{flex:1;}
+.ch-num{font-size:9px;font-weight:900;color:#bbb;letter-spacing:1px;text-transform:uppercase;margin-bottom:2px;}
+.ch-name{font-size:15px;font-weight:900;color:var(--navy);margin-bottom:2px;}
+.ch-eng{font-size:10px;color:#bbb;font-weight:700;}
+.ch-status{font-size:11px;font-weight:700;color:#ccc;}
+.ch-status.done{color:var(--green);}
+.ch-status.locked-txt{color:#ddd;}
+
+/* ── GAME SCREEN ── */
+#gameScreen{display:none;width:100%;max-width:580px;position:relative;z-index:1;}
+.gs-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.gs-back{background:#fff;border:2px solid #e0d6cc;border-radius:8px;padding:6px 12px;
+  font-size:11px;font-weight:900;color:var(--navy);cursor:pointer;
+  box-shadow:2px 2px 0 #e0d6cc;font-family:'Noto Sans TC',sans-serif;}
+.gs-back:hover{border-color:var(--coral);color:var(--coral);}
+.gs-title{font-size:14px;font-weight:900;color:var(--navy);text-align:center;}
+.gs-lvl{font-size:11px;font-weight:900;color:var(--coral);}
+
+.stats-row{width:100%;display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px;}
+.stat{background:#fff;border:2px solid #e0d6cc;border-radius:10px;padding:7px 4px;text-align:center;box-shadow:2px 2px 0 #e0d6cc;}
+.stat .lbl{font-size:8px;font-weight:900;color:#bbb;letter-spacing:1px;margin-bottom:3px;}
+.stat .val{font-size:14px;font-weight:900;color:var(--navy);}
+.stat.lives .val{color:var(--red);}
+
+.xp-wrap{width:100%;margin-bottom:10px;}
+.xp-meta{display:flex;justify-content:space-between;font-size:9px;font-weight:700;color:#bbb;margin-bottom:4px;}
+.xp-track{height:8px;background:#ede5dc;border:2px solid #e0d6cc;border-radius:20px;overflow:hidden;}
+.xp-fill{height:100%;background:linear-gradient(90deg,var(--coral),var(--gold));border-radius:20px;transition:width 0.5s ease;}
+
+/* Progress dots */
+.q-dots{display:flex;gap:5px;justify-content:center;margin-bottom:10px;}
+.q-dot{width:8px;height:8px;border-radius:50%;background:#e0d6cc;transition:all 0.3s;}
+.q-dot.done{background:var(--green);}
+.q-dot.wrong{background:var(--red);}
+.q-dot.current{background:var(--coral);transform:scale(1.3);}
+
+/* Timer */
+#timerWrap{width:100%;margin-bottom:8px;display:none;}
+#timerBar{height:7px;border-radius:20px;transition:width 0.1s linear;}
+.tpulse{animation:tpulse 0.5s ease-in-out infinite;}
+
+/* Question card */
+#qCard{
+  width:100%;background:#fff;border:2.5px solid #e0d6cc;border-radius:14px;
+  padding:20px 17px;margin-bottom:12px;box-shadow:4px 4px 0 #e0d6cc;
+  transition:border-color 0.2s;
+}
+#qCard.speed{border-color:var(--red);box-shadow:4px 4px 0 #f5b8b8,0 0 14px rgba(231,76,60,0.15);}
+#qCard.dbl{border-color:var(--gold);box-shadow:4px 4px 0 #fde8cc,0 0 14px rgba(243,156,18,0.15);}
+
+.q-meta{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+.q-badge{display:inline-block;background:var(--coral);color:#fff;font-size:8px;font-weight:900;
+  padding:3px 10px;border-radius:20px;letter-spacing:1px;}
+.q-badge.gd{background:var(--gold);}
+.q-badge.rd{background:var(--red);}
+.q-num{font-size:10px;font-weight:700;color:#ccc;}
+#eventTag{font-size:10px;font-weight:900;min-height:16px;margin-bottom:5px;}
+#qText{font-size:14px;font-weight:800;color:var(--navy);line-height:1.7;margin-bottom:16px;}
+
+.opts{display:flex;flex-direction:column;gap:8px;}
+.opt{
+  background:#fafafa;border:2px solid #e8e0d8;color:#555;
+  padding:11px 13px;border-radius:10px;cursor:pointer;
+  font-family:'Noto Sans TC',sans-serif;font-size:13px;font-weight:700;
+  text-align:left;transition:all 0.15s;display:flex;align-items:flex-start;gap:10px;
+  box-shadow:2px 2px 0 #e8e0d8;
+}
+.opt:hover:not(:disabled){border-color:var(--coral);color:var(--coral);
+  background:#fff5f0;transform:translateX(3px);box-shadow:3px 3px 0 var(--coral);}
+.opt:disabled{cursor:default;}
+.opt.correct{border-color:var(--green);background:#f0fff6;color:#1a9150;box-shadow:2px 2px 0 var(--green);animation:popIn 0.3s ease;}
+.opt.wrong{border-color:var(--red);background:#fff5f5;color:var(--red);box-shadow:2px 2px 0 var(--red);}
+.opt.dim{border-color:#eee;color:#ccc;background:#f9f9f9;pointer-events:none;text-decoration:line-through;}
+.opt.reveal{border-color:#ddd;color:#ccc;}
+.opt-ltr{font-size:10px;font-weight:900;color:#ccc;min-width:16px;padding-top:1px;}
+#feedback{text-align:center;font-size:13px;font-weight:900;margin-top:10px;min-height:18px;}
+
+/* Actions */
+#actBar{width:100%;display:none;gap:8px;margin-bottom:12px;}
+.act-btn{
+  flex:1;background:#fff;border:2px solid #e0d6cc;color:var(--navy);
+  padding:9px;border-radius:10px;font-family:'Noto Sans TC',sans-serif;
+  font-size:12px;font-weight:900;cursor:pointer;box-shadow:2px 2px 0 #e0d6cc;transition:all 0.15s;}
+.act-btn:hover{border-color:var(--gold);color:var(--gold);transform:translateY(-1px);}
+.act-btn:disabled{color:#ccc;border-color:#eee;cursor:default;transform:none;}
+
+/* ── MINI GAMES ── */
+/* Flip */
+#flipGame{
+  display:none;width:100%;background:#fff;border:2.5px solid var(--blue);
+  border-radius:14px;padding:18px;box-shadow:4px 4px 0 #b8d4f5;margin-bottom:12px;
+}
+#flipGame h2{font-size:15px;font-weight:900;color:var(--navy);text-align:center;margin-bottom:3px;}
+.mini-sub{font-size:11px;color:#aaa;text-align:center;margin-bottom:13px;font-weight:700;}
+.flip-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.fc{aspect-ratio:1;border-radius:10px;cursor:pointer;position:relative;
+  transform-style:preserve-3d;transition:transform 0.4s;}
+.fc.flipped{transform:rotateY(180deg);}
+.fc.matched{transform:rotateY(180deg);pointer-events:none;}
+.fc-f,.fc-b{position:absolute;inset:0;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+  font-size:11px;font-weight:900;text-align:center;padding:5px;border:2px solid #e0d6cc;}
+.fc-f{background:var(--navy);}
+.fc-f::after{content:'？';color:#fff;font-size:18px;}
+.fc-b{background:#f0f8ff;color:var(--navy);transform:rotateY(180deg);border-color:var(--blue);line-height:1.3;}
+.fc.matched .fc-b{background:#f0fff6;border-color:var(--green);color:var(--green);}
+#flipFb{text-align:center;margin-top:10px;font-size:12px;font-weight:800;color:#aaa;min-height:16px;}
+
+/* Sort */
+#sortGame{
+  display:none;width:100%;background:#fff;border:2.5px solid var(--purple);
+  border-radius:14px;padding:18px;box-shadow:4px 4px 0 #d8b8f5;margin-bottom:12px;
+}
+#sortGame h2{font-size:15px;font-weight:900;color:var(--navy);text-align:center;margin-bottom:3px;}
+.sort-pool{display:flex;flex-wrap:wrap;gap:7px;justify-content:center;
+  border:2px dashed #e0d6cc;border-radius:10px;padding:10px;margin-bottom:14px;min-height:46px;}
+.s-chip{background:var(--navy);color:#fff;padding:6px 13px;border-radius:20px;
+  font-size:12px;font-weight:800;cursor:pointer;border:2px solid transparent;transition:all 0.15s;}
+.s-chip:hover{transform:scale(1.05);border-color:var(--coral);}
+.s-chip.sel{background:var(--coral);}
+.sort-bins{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.s-bin{background:#f9f5f0;border:2px dashed #e0d6cc;border-radius:10px;padding:10px;min-height:76px;cursor:pointer;}
+.s-bin h3{font-size:10px;font-weight:900;color:var(--navy);text-align:center;margin-bottom:7px;line-height:1.4;}
+.s-bin-chips{display:flex;flex-wrap:wrap;gap:5px;justify-content:center;}
+.s-bin-chip{background:#e8e0d8;color:var(--navy);padding:4px 9px;border-radius:20px;
+  font-size:11px;font-weight:800;cursor:pointer;}
+.s-bin-chip:hover{background:var(--red);color:#fff;}
+.sort-ok{width:100%;margin-top:11px;background:var(--purple);color:#fff;border:none;
+  padding:10px;border-radius:10px;font-family:'Noto Sans TC',sans-serif;font-size:13px;
+  font-weight:900;cursor:pointer;box-shadow:2px 2px 0 #7b4aaf;}
+.sort-ok:hover{transform:translateY(-1px);}
+#sortFb{text-align:center;margin-top:9px;font-size:12px;font-weight:800;min-height:16px;}
+
+/* ── CHAPTER COMPLETE ── */
+#chComplete{
+  display:none;width:100%;background:#fff;border:2.5px solid #e0d6cc;
+  border-radius:14px;padding:26px 20px;box-shadow:4px 4px 0 #e0d6cc;text-align:center;
+}
+#chComplete.show{display:block;animation:popIn 0.4s ease;}
+.cc-icon{font-size:56px;margin-bottom:8px;}
+.cc-title{font-size:22px;font-weight:900;color:var(--navy);margin-bottom:4px;}
+.cc-score{font-size:46px;font-weight:900;color:var(--coral);margin:6px 0;}
+.cc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:14px 0;}
+.cc-box{background:var(--cream);border-radius:10px;padding:10px;border:2px solid #e0d6cc;}
+.cc-box .cl{font-size:9px;font-weight:900;color:#bbb;text-transform:uppercase;letter-spacing:1px;}
+.cc-box .cv{font-size:18px;font-weight:900;color:var(--navy);}
+.cc-btns{display:flex;gap:10px;margin-top:14px;}
+.cc-btn{flex:1;border:none;padding:12px;border-radius:40px;font-size:14px;font-weight:900;
+  cursor:pointer;font-family:'Noto Sans TC',sans-serif;transition:transform 0.1s;}
+.cc-btn:hover{transform:translateY(-2px);}
+.cc-btn.retry{background:#fff;color:var(--navy);border:2px solid #e0d6cc;box-shadow:2px 2px 0 #e0d6cc;}
+.cc-btn.next{background:var(--coral);color:#fff;box-shadow:3px 3px 0 #c0390d;}
+
+/* Streak badge */
+#streakBadge{
+  position:fixed;bottom:16px;right:14px;background:#fff;border:2px solid #e0d6cc;
+  border-radius:50px;padding:7px 12px;font-size:13px;font-weight:900;color:var(--navy);
+  box-shadow:3px 3px 0 #e0d6cc;z-index:50;display:none;align-items:center;gap:5px;
+}
+#streakBadge.hot{border-color:var(--gold);box-shadow:3px 3px 0 #fde8cc,0 0 14px rgba(243,156,18,0.4);}
+#streakBadge.fire{border-color:var(--coral);box-shadow:3px 3px 0 #ffcdb8,0 0 18px rgba(255,107,53,0.5);animation:spop 0.3s ease;}
+
+.float-xp{position:fixed;font-size:13px;font-weight:900;pointer-events:none;z-index:200;
+  animation:floatUp 1.2s ease forwards;}
+
+@keyframes floatUp{0%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:0;transform:translateY(-80px) scale(1.4)}}
+@keyframes popIn{0%{transform:scale(0.7);opacity:0}60%{transform:scale(1.1)}100%{transform:scale(1);opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(8px)}60%{transform:translateX(-5px)}80%{transform:translateX(5px)}}
+@keyframes tpulse{0%,100%{box-shadow:0 0 6px rgba(231,76,60,0.4)}50%{box-shadow:0 0 18px rgba(231,76,60,0.9)}}
+@keyframes spop{0%{transform:scale(1)}50%{transform:scale(1.4)}100%{transform:scale(1)}}
+</style>
+</head>
+<body>
+<div id="flash"></div>
+<div id="eventBanner"></div>
+<div id="streakBadge">🔥 <span id="streakNum">0</span></div>
+
+<!-- LEVEL UP -->
+<div id="luOverlay">
+  <div class="lu-icon">🎓</div>
+  <div class="lu-title" id="luTitle">章節完成！</div>
+  <div class="lu-next" id="luNext">解鎖下一章節</div>
+  <div class="lu-desc" id="luDesc">準備好繼續學習了嗎？</div>
+  <div class="lu-xp" id="luXp">+200 獎勵經驗值</div>
+  <button class="lu-btn" onclick="dismissLU()">繼續！→</button>
+</div>
+
+<!-- CHAPTER SELECT -->
+<div id="chapterSelect">
+  <div class="cs-header">
+    <div class="cs-logo">炫式<span>NLP</span> 🧠 闖關</div>
+    <div class="cs-sub">根據課程章節設計 · 由淺入深</div>
+  </div>
+  <div class="ch-grid" id="chGrid"></div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="gameScreen">
+  <div class="gs-top">
+    <button class="gs-back" onclick="backToMenu()">← 返回</button>
+    <div class="gs-title" id="gsTitle"></div>
+    <div class="gs-lvl">LV.<span id="gsLvl">1</span></div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat lives"><div class="lbl">生命</div><div class="val" id="livesVal">❤️❤️❤️</div></div>
+    <div class="stat"><div class="lbl">得分</div><div class="val" id="scoreVal">0</div></div>
+    <div class="stat"><div class="lbl">準確率</div><div class="val" id="accVal">—</div></div>
+    <div class="stat"><div class="lbl">提示💡</div><div class="val" id="hintsVal">3</div></div>
+  </div>
+
+  <div class="xp-wrap">
+    <div class="xp-meta"><span>經驗值</span><span id="xpLabel">0 / 150</span></div>
+    <div class="xp-track"><div class="xp-fill" id="xpFill" style="width:0%"></div></div>
+  </div>
+
+  <div class="q-dots" id="qDots"></div>
+  <div id="timerWrap"><div id="timerBar"></div></div>
+
+  <div id="qCard" style="display:none;">
+    <div class="q-meta">
+      <span class="q-badge" id="qBadge">章節</span>
+      <span class="q-num" id="qNum">第1題</span>
+    </div>
+    <div id="eventTag"></div>
+    <div id="qText"></div>
+    <div class="opts" id="opts"></div>
+    <div id="feedback"></div>
+  </div>
+
+  <div id="actBar">
+    <button class="act-btn" id="hintBtn" onclick="useHint()">💡 使用提示 <span id="hintCost" style="color:#bbb;font-size:10px">(扣50分)</span></button>
+  </div>
+
+  <div id="flipGame">
+    <h2>🃏 配對挑戰！</h2>
+    <p class="mini-sub">將NLP詞彙與定義配對 — 成功得 <span id="flipReward">+200</span> 分</p>
+    <div class="flip-grid" id="flipGrid"></div>
+    <div id="flipFb"></div>
+  </div>
+
+  <div id="sortGame">
+    <h2 id="sortTitle">⚡ 分類挑戰！</h2>
+    <p class="mini-sub" id="sortSub">點選詞彙再點選分類框</p>
+    <div class="sort-pool" id="sortPool"></div>
+    <div class="sort-bins" id="sortBins"></div>
+    <button class="sort-ok" onclick="checkSort()">確認答案 ✓</button>
+    <div id="sortFb"></div>
+  </div>
+
+  <div id="chComplete">
+    <div class="cc-icon" id="ccIcon">🎉</div>
+    <div class="cc-title" id="ccTitle">章節完成！</div>
+    <div class="cc-score" id="ccScore">0</div>
+    <div style="font-size:11px;color:#aaa;font-weight:700;margin-bottom:4px;">本章得分</div>
+    <div class="cc-grid">
+      <div class="cc-box"><div class="cl">答對題數</div><div class="cv" id="ccCorrect">0</div></div>
+      <div class="cc-box"><div class="cl">準確率</div><div class="cv" id="ccAcc">0%</div></div>
+      <div class="cc-box"><div class="cl">最高連勝</div><div class="cv" id="ccStreak">0</div></div>
+      <div class="cc-box"><div class="cl">評級</div><div class="cv" id="ccGrade">B</div></div>
+    </div>
+    <div class="cc-btns">
+      <button class="cc-btn retry" onclick="retryChapter()">🔄 重試</button>
+      <button class="cc-btn next" id="nextChBtn" onclick="nextChapter()">下一章 →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// CHAPTER DEFINITIONS
+// ═══════════════════════════════════════
+const CHAPTERS = [
+  {
+    id:0, icon:'📖', name:'NLP 簡介', eng:'Introduction to NLP',
+    color:'#FF6B35', questions:10,
+    flipPairs:[
+      ['神經 (Neuro)','透過五官處理外來訊息的神經系統'],
+      ['語言 (Linguistic)','語言與非語言的溝通方法'],
+      ['程式 (Programming)','達成目標的思想與行為模式'],
+      ['地圖並非實地','我們的認知不等於真實世界'],
+      ['沒有失敗','只有回應與反饋'],
+      ['生態平衡','對整體生活系統有益的改變'],
+    ],
+    sortChallenge:{
+      title:'成功的五個原則',sub:'哪些是成功的五個原則？',
+      bins:['✅ 成功原則','❌ 不屬於'],
+      correct:{
+        '✅ 成功原則':['清楚知道成果','立刻行動','敏銳的觀察力','伸縮性的行為','保持最佳狀態'],
+        '❌ 不屬於':['批評他人','逃避挑戰','等待機會'],
+      }
+    },
+    qs:[
+      {q:'NLP的「N」代表什麼？',opts:['神經（Neuro）','自然（Natural）','新（New）','標準（Normal）'],a:0},
+      {q:'NLP的「L」代表什麼？',opts:['學習（Learning）','語言（Linguistic）','邏輯（Logic）','線性（Linear）'],a:1},
+      {q:'NLP的「P」代表什麼？',opts:['練習（Practice）','正向（Positive）','程式（Programming）','程序（Process）'],a:2},
+      {q:'NLP 炫式課程共分為幾個等級？',opts:['2個：執行師和導師','3個：執行師、高級執行師和導師','4個：基礎、執行師、高級執行師和導師','5個等級'],a:1},
+      {q:'成功的五個原則中，哪一條是第一條？',opts:['立刻行動','保持最佳狀態','清楚知道你所要的成果','擁有敏銳的觀察力'],a:2},
+      {q:'NLP假設前題中，「溝通的意義」在於什麼？',opts:['你說了什麼','你的意圖','你所得到的回應','你的音調'],a:2},
+      {q:'「地圖並非實地」這個假設前題的意思是？',opts:['使用地圖導航','我們的世界觀不等於真實世界','地理位置很重要','地圖不準確'],a:1},
+      {q:'「沒有失敗，只有回應」這個假設前題暗示？',opts:['失敗是可恥的','每個結果都提供學習資訊','成功不需要努力','回應是不重要的'],a:1},
+      {q:'NLP假設前題中，「一切行為的背後」有什麼？',opts:['負面意圖','正面意圖','隱藏動機','無意識衝動'],a:1},
+      {q:'「目的」與「狀態」的最大分別是什麼？',opts:['狀態比目的重要','目的需要時間達成，狀態可即時擁有','狀態比目的具體','兩者完全相同'],a:1},
+    ]
+  },
+  {
+    id:1, icon:'🔍', name:'觀察力與次感元', eng:'Sensory Acuity & SubModalities',
+    color:'#9b59b6', questions:10,
+    flipPairs:[
+      ['次感元','感官系統內的個別品質（如明暗、大小）'],
+      ['結合狀態','完全置身於經歷之中（自己在圖裡）'],
+      ['抽離狀態','從外部觀看自己的經歷（看見自己在圖裡）'],
+      ['Swish模式','以理想狀態圖像取代不理想狀態的技巧'],
+      ['決定性次感元','最能製造差異的次感元（如位置、距離）'],
+      ['模擬未來','在心理上預演未來情況以確認新行為'],
+    ],
+    sortChallenge:{
+      title:'次感元分類',sub:'以下哪些屬於視覺次感元？',
+      bins:['👁 視覺次感元','👂 聽覺次感元'],
+      correct:{
+        '👁 視覺次感元':['明亮/暗淡','大/小','有框/無框','近/遠','彩色/黑白'],
+        '👂 聽覺次感元':['大聲/小聲','高音/低音','快/慢','柔和/粗糙'],
+      }
+    },
+    qs:[
+      {q:'察顏觀色（敏銳的觀察力）包括觀察哪些生理特徵？',opts:['只觀察眼睛移動','皮膚顏色、光澤、呼吸、瞳孔等微小改變','只觀察肢體語言','只聆聽說話內容'],a:1},
+      {q:'「次感元」（SubModalities）是指什麼？',opts:['五種感官本身','每個感官系統內的個別品質（如明暗、大小）','改變行為的策略','設定心錨的方法'],a:1},
+      {q:'在Swish模式中，現時不理想的狀態必須是哪種狀態？',opts:['抽離的','結合的（完全置身其中）','黑白的','模糊的'],a:1},
+      {q:'在Swish模式中，理想的未來狀態必須是哪種狀態？',opts:['結合的','非常大的圖像','抽離的（看見自己在圖裡）','彩色的'],a:2},
+      {q:'Swish模式的主要目的是什麼？',opts:['完全消除舊習慣','增加選擇，為理想狀態創造動力','只改變感覺','創造心錨'],a:1},
+      {q:'在改變次感元時，哪類次感元通常最具「決定性」？',opts:['顏色','位置、距離、結合/抽離等','聲音速度','感覺質地'],a:1},
+      {q:'用次感元改變信念時，「絕對屬實的信念」（如太陽在東邊升起）被用作？',opts:['需要消除的信念','提供次感元品質給想要的信念','限制性信念的例子','測試信念的工具'],a:1},
+      {q:'次感元改變好惡的步驟是？',opts:['把喜歡的次感元加到不喜歡的事物','把不喜歡的事物的次感元套用到想改變的事物上','只改變顏色次感元','只改變位置次感元'],a:1},
+      {q:'在進行Swish模式時，「Swish一聲」的速度要求是？',opts:['慢慢進行，每步驟10秒','非常快速、一氣呵成','中等速度','沒有速度要求'],a:1},
+      {q:'改變次感元後，最後必須進行什麼步驟？',opts:['立刻做另一次改變','測試和模擬未來','告訴別人你的改變','什麼都不用做'],a:1},
+    ]
+  },
+  {
+    id:2, icon:'🤝', name:'親和力與表象系統', eng:'Rapport & Representational Systems',
+    color:'#3498db', questions:10,
+    flipPairs:[
+      ['親和力','兩人之間的互信、了解與共同感'],
+      ['吻合（Matching）','模仿對方的言行舉止以建立親和'],
+      ['映現（Mirroring）','如鏡子般反射對方的動作'],
+      ['非吻合（Mismatching）','刻意不配合，用以打斷對話'],
+      ['視覺型（V）','用胸上部呼吸，說話快，多手勢'],
+      ['感覺型（K）','用丹田呼吸，說話慢，最佳聆聽者'],
+    ],
+    sortChallenge:{
+      title:'表象系統慣用詞分類',sub:'以下詞彙屬於哪個表象系統？',
+      bins:['👁 視覺詞彙','🤲 感覺詞彙'],
+      correct:{
+        '👁 視覺詞彙':['清晰','觀察','透視','前景','悅目'],
+        '🤲 感覺詞彙':['感受','掌握','踏實','溫馨','如釋重負'],
+      }
+    },
+    qs:[
+      {q:'根據Birdwhistle（1970年），溝通中「肢體語言」佔百分之多少？',opts:['7%','38%','55%','80%'],a:2},
+      {q:'NLP中建立親和力的主要方法包括？',opts:['爭論對方觀點','吻合（Matching）和映現（Mirroring）','提高聲音','避免眼神接觸'],a:1},
+      {q:'「視覺型（V）」的人在說話時，通常用哪個部位呼吸？',opts:['丹田（腹部）','胸的中部','胸的上部','鼻子'],a:2},
+      {q:'「聽覺型（A）」的人最擅長做什麼？',opts:['用電話交談，善於溝通','看圖表，注重視覺效果','用觸摸方式溝通','內心獨自思考'],a:0},
+      {q:'「感覺型（K）」的人有什麼特徵？',opts:['說話快速，缺乏耐心','有耐心，是最佳聆聽者，用丹田呼吸','喜歡用電話交談','說話時帶有音調變化'],a:1},
+      {q:'「內心對話型（Ad）」的人有什麼特徵？',opts:['總是大聲說話','花很多時間自言自語，有興趣了解事物的邏輯','喜歡觸摸別人','只看圖像思考'],a:1},
+      {q:'以下哪個詞彙屬於「視覺」表象系統的慣用詞？',opts:['感受','和諧','清晰','踏實'],a:2},
+      {q:'以下哪個詞彙屬於「感覺」表象系統的慣用詞？',opts:['觀察','如雷貫耳','溫馨','分析'],a:2},
+      {q:'眼睛移動模式中，「視覺創造（Vc）」眼睛會望向哪個方向？（右手人士）',opts:['左上方','右上方','左方（水平）','右下方'],a:1},
+      {q:'眼睛移動模式中，「感覺（K）」對應哪個眼睛方向？（右手人士）',opts:['右上方','左上方','左下方','右下方'],a:2},
+    ]
+  },
+  {
+    id:3, icon:'♟️', name:'策略', eng:'Strategies',
+    color:'#1abc9c', questions:10,
+    flipPairs:[
+      ['策略定義','持續帶來特定成果的內在/外在表象程式'],
+      ['T.O.T.E.','測試-運作-測試-退出的策略模式'],
+      ['尋究策略','找出他人的思想或行為策略'],
+      ['安裝策略','使新策略在潛意識中自動運作'],
+      ['視覺回想（Vr）','卓越串字策略的核心步驟'],
+      ['購買策略','動機→決定→信服要訣→再次保證'],
+    ],
+    sortChallenge:{
+      title:'T.O.T.E. 四個步驟',sub:'將以下步驟歸入正確類別',
+      bins:['✅ T.O.T.E.步驟','❌ 不屬於'],
+      correct:{
+        '✅ T.O.T.E.步驟':['測試（Test）','運作（Operate）','退出（Exit）','比較準則'],
+        '❌ 不屬於':['立刻反應','跳過測試','避免比較'],
+      }
+    },
+    qs:[
+      {q:'NLP中「策略」的定義是什麼？',opts:['一種軍事計劃','持續帶來特定成果的內在及外在表象程式','一種語言技巧','建立親和力的方法'],a:1},
+      {q:'T.O.T.E. 模式由哪四個部分組成？',opts:['思考-觀察-訓練-評估','測試-運作-測試-退出','嘗試-觀察-測試-退出','目標-運作-測試-退出'],a:1},
+      {q:'T.O.T.E. 模式是由哪幾位學者在1960年提出？',opts:['班德勒和葛瑞德','米勒、加蘭特和普里布拉姆','達特詹姆斯','艾瑞克森'],a:1},
+      {q:'策略的四個主要步驟按順序是？',opts:['設計、安裝、尋究、運用','尋究、運用、設計、安裝','安裝、尋究、設計、運用','運用、設計、尋究、安裝'],a:1},
+      {q:'「串字」策略中，卓越的串字高手主要用哪個表象系統？',opts:['聽覺回想（Ar）','感覺（K）','視覺回想（Vr）','內心對話（Ad）'],a:2},
+      {q:'用聲音串字的準確率大約是多少？',opts:['90%','70%','50%','30%'],a:2},
+      {q:'購買策略可再分為哪四個部份？',opts:['動機、決定、信服要訣、再次保證','需求、分析、比較、決定','觸發、運作、測試、退出','注意、興趣、欲望、行動'],a:0},
+      {q:'「安裝策略」的方法包括？',opts:['只用語言告知','結合狀態排練、隱喻、設定心錨、抽離狀態排練等','只做一次示範','只做閱讀練習'],a:1},
+      {q:'設計策略的原則不包括以下哪項？',opts:['保存原有功能','用最少的轉變達成目標','加入盡可能多的步驟','確保步驟按程序進行'],a:2},
+      {q:'學習策略的結構完善準則建議，比較時要與什麼比較？',opts:['世界上最好的人','你自己舊有的能力','最高理想','你的競爭對手'],a:1},
+    ]
+  },
+  {
+    id:4, icon:'💬', name:'語言模式', eng:'Language Patterns',
+    color:'#e67e22', questions:11,
+    flipPairs:[
+      ['米爾頓模式','目的含糊的催眠語言，探索潛意識資源'],
+      ['後設模式','澄清刪除、扭曲、一般化的語言工具'],
+      ['讀心（Mind Read）','聲言知道對方的思想而不說明來源'],
+      ['雙重約束','無論如何選擇，結果都朝同一方向'],
+      ['名詞化語態','將動詞/過程轉化為抽象名詞'],
+      ['附加問句','加在句子後，用於排除抗拒'],
+    ],
+    sortChallenge:{
+      title:'後設模式分類',sub:'以下句子屬於哪類後設模式問題？',
+      bins:['🌀 扭曲（Distortion）','🌐 一般化（Generalisation）'],
+      correct:{
+        '🌀 扭曲（Distortion）':['讀心術','因果關係','複雜等於','假設前題'],
+        '🌐 一般化（Generalisation）':['一般化量詞','必須的用語','不可能的用語'],
+      }
+    },
+    qs:[
+      {q:'語言模式中，「米爾頓模式」的主要目的是？',opts:['澄清語言，去除模糊','使用目的含糊的語言，探索潛意識資源','直接挑戰信念','提問詳細問題'],a:1},
+      {q:'「後設模式」（Meta Model）的主要功能是？',opts:['製造更多模糊','澄清刪除、扭曲和一般化的語言','催眠當事人','安裝新策略'],a:1},
+      {q:'米爾頓模式中「讀心」（Mind Read）是指？',opts:['看穿別人的心思','聲言知道對方思想卻不說明如何得知','用問題了解對方','閱讀肢體語言'],a:1},
+      {q:'「雙重約束」（Double Bind）的作用是？',opts:['製造混亂','無論對方如何選擇，結果都朝說話者希望的方向','給予自由選擇','打破親和力'],a:1},
+      {q:'「名詞化語態」（Nominalization）是指？',opts:['使用很多名詞','將動詞/過程轉化為抽象名詞，如「溝通」、「理解」','避免用動詞','使用外語名詞'],a:1},
+      {q:'後設模式中，「他大聲向我說話，他不喜歡我」屬於哪種扭曲？',opts:['讀心','因果（Cause & Effect）','複雜等於（Complex Equivalence）','一般化量詞'],a:2},
+      {q:'後設模式中，「他從來都不聽我的話」屬於哪類模式？',opts:['扭曲','刪除','一般化量詞（Universal Quantifier）','假設前題'],a:2},
+      {q:'「語言中的假設前題」共有多少種？',opts:['5種','8種','10種','15種'],a:2},
+      {q:'「隱喻」在NLP中的主要用途是？',opts:['直接告訴當事人答案','用故事引導當事人思想與行為','建立心錨','測試表象系統'],a:1},
+      {q:'「附加問句」（Tag Questions）如「你可以的，不是嗎？」，其作用是？',opts:['增加問題的難度','排除對方的抗拒','表達不確定','測試對方知識'],a:1},
+      {q:'往上歸類（Chunking Up）使用的典型問句是？',opts:['「有什麼例子？」','「具體地說是？」','「這是什麼的例子？」或「你的意圖是什麼？」','「怎樣做？」'],a:2},
+    ]
+  },
+  {
+    id:5, icon:'⚓', name:'心錨', eng:'Anchoring',
+    color:'#2ecc71', questions:10,
+    flipPairs:[
+      ['心錨定義','刺激與特定情緒反應之間的聯繫'],
+      ['豐資心錨','積疊多種正面狀態的強力心錨'],
+      ['摧毀心錨','同時觸發正負心錨使其相互中和'],
+      ['串連心錨','用於理想狀態與現時狀態相距甚遠時'],
+      ['設定心錨時機','在狀態達到高峰時設定'],
+      ['心錨四關鍵','強烈、準確、獨特、可複製'],
+    ],
+    sortChallenge:{
+      title:'最佳設定心錨的狀態類型',sub:'哪些狀態最適合設定豐資心錨？',
+      bins:['✅ 適合的狀態','⚠️ 效果較差'],
+      correct:{
+        '✅ 適合的狀態':['自然發生的狀態','強烈清晰的過去經歷','完全充滿能量的感覺','完全自信的時候'],
+        '⚠️ 效果較差':['構造出來的狀態','模糊的回憶','只是想像的感覺'],
+      }
+    },
+    qs:[
+      {q:'NLP中「心錨」的定義是什麼？',opts:['一種冥想方法','任何刺激與特定情緒反應之間所建立的聯繫','一種呼吸技巧','設定目標的工具'],a:1},
+      {q:'設定心錨的四個步驟中，第一步是什麼？',opts:['立刻設定心錨','請當事人回憶過去一個強烈而清晰的經歷','改變當事人的狀態','測試心錨'],a:1},
+      {q:'設定心錨最重要的時機是什麼時候？',opts:['在狀態開始時','在狀態消退後','當感覺要達到高峰時','在談話結束時'],a:2},
+      {q:'設定有效心錨的四個關鍵是：強烈、準確、獨特，以及？',opts:['持久','有趣','可複製','特別'],a:2},
+      {q:'「豐資心錨」是什麼？',opts:['只有一種正面狀態的心錨','積疊多種正面狀態在同一個心錨上','只用於治療的心錨','可消除負面情緒的心錨'],a:1},
+      {q:'「摧毀心錨」的技術是？',opts:['只移除負面心錨','同時觸發正面和負面心錨，讓它們相互中和','重新設立更強的正面心錨','用藥物消除'],a:1},
+      {q:'「串連心錨」適用於什麼情況？',opts:['當事人有很多心錨時','理想狀態與現時狀態相距太遠時','只有一個心錨時','心錨不夠強時'],a:1},
+      {q:'最好的設定心錨狀態，效果排列正確的是？',opts:['構造出來的狀態＞自然狀態＞過去狀態','自然狀態＞過去清晰強烈狀態＞構造出來的狀態','過去狀態＞自然狀態＞構造出來的狀態','全部效果相同'],a:1},
+      {q:'設定心錨後，第四步是？',opts:['再次改變狀態','放射心錨進行測試','告訴當事人心錨的作用','設定另一個心錨'],a:1},
+      {q:'在摧毀心錨步驟中，同時觸發兩個心錨達到高峰後，應先放開哪個心錨？',opts:['先放開積極狀態心錨','先放開消極狀態心錨','同時放開兩個','不用放開'],a:1},
+    ]
+  },
+  {
+    id:6, icon:'🔄', name:'架構重建（重框法）', eng:'Reframing',
+    color:'#e74c3c', questions:8,
+    flipPairs:[
+      ['架構重建基礎','將行為的「意圖」與「行為本身」分開'],
+      ['情境重建','用於「我太……」，在新情境中賦予行為新意義'],
+      ['內容重建','用於「每當X發生，我必定Y」，問行為還有什麼意義'],
+      ['聲調模式','同一句話用不同聲調，可表達問題、聲明或指令'],
+      ['往上歸類','找出更高的共同意圖與目的'],
+      ['往下歸類','找出更具體、更特定的細節'],
+    ],
+    sortChallenge:{
+      title:'重框法分類',sub:'以下情況適合用哪種重框法？',
+      bins:['🌍 情境重建','📝 內容重建'],
+      correct:{
+        '🌍 情境重建':['我太固執了','他太嚴格了','我太小心了'],
+        '📝 內容重建':['每當他大聲，我就傷心','每當被拒絕，我就放棄','每當失敗，我就自責'],
+      }
+    },
+    qs:[
+      {q:'架構重建（重框法）的基礎是將什麼分開？',opts:['過去與現在','行為的「意圖」與「行為本身」','情感與思想','語言與行動'],a:1},
+      {q:'「情境重建」最適合用於哪類語句？',opts:['「每當X發生，我必定Y」','「我太……」或「他太……」','「我不可能……」','「他總是……」'],a:1},
+      {q:'「內容重建」是問？',opts:['「在什麼情境下這行為是合適的？」','「這行為還可以有什麼其他意義？」','「為什麼這樣做？」','「怎樣才能改變？」'],a:1},
+      {q:'書中「老翁失馬」的故事是用來說明哪種重框法？',opts:['內容重建','時間重建','情境重建','語言重建'],a:2},
+      {q:'聲調模式中，同一句話音調上揚（↑）代表什麼？',opts:['指令','聲明','問題','感嘆'],a:2},
+      {q:'聲調模式中，同一句話音調下降（↓）代表什麼？',opts:['問題','指令','感嘆','猶豫'],a:1},
+      {q:'往上歸類（Chunking Up）適用於什麼目的？',opts:['找更多具體例子','製造歧見','達成共識，找出雙方更高層次的共同目的','學習更多細節'],a:2},
+      {q:'詢問模式III中，用「另一面」的問題（如「你想改變什麼？」）的目的是？',opts:['找出更多問題','引導當事人從問題轉向解決方案','製造混亂','測試當事人'],a:1},
+    ]
+  },
+  {
+    id:7, icon:'🏥', name:'治療技巧', eng:'Basic Interventions',
+    color:'#8e44ad', questions:9,
+    flipPairs:[
+      ['部位一體化','整合內在衝突的兩個「部位」（次人格）'],
+      ['視感抽離法','分開視覺和感覺以處理痛苦經歷'],
+      ['快速恐懼症治療','以黑白電影正放+彩色倒放消除恐懼'],
+      ['家庭治療模式','清除錯誤心錨+指導適當策略'],
+      ['部位（Parts）','具有特定意圖的次人格，有時互相衝突'],
+      ['生態平衡檢查','確認改變對當事人整體生活系統有益'],
+    ],
+    sortChallenge:{
+      title:'治療技巧配對',sub:'哪種技巧最適合以下情況？',
+      bins:['🎬 視感抽離法','🤲 部位一體化'],
+      correct:{
+        '🎬 視感抽離法':['處理創傷記憶','重播痛苦經歷','消除恐懼症'],
+        '🤲 部位一體化':['內在衝突（想做又不想做）','兩個「部位」互相矛盾','次人格整合'],
+      }
+    },
+    qs:[
+      {q:'「部位一體化」（Parts Integration）適用於什麼情況？',opts:['處理恐懼症','整合內在兩個互相衝突的「部位」（次人格）','建立心錨','消除記憶'],a:1},
+      {q:'「視感抽離法」（VK Dissociation）的核心目的是？',opts:['加強感受','分開視覺與感覺，讓當事人能看事件而不重新感受痛苦','消除所有記憶','建立新心錨'],a:1},
+      {q:'在視感抽離法中，當事人要把痛苦經歷投射到哪裡？',opts:['直接在腦海中回憶','想象中的螢光幕上','寫在紙上','向治療師描述'],a:1},
+      {q:'「快速恐懼症治療」的電影播放方法是？',opts:['彩色正播，然後黑白倒播','黑白正播，然後彩色從後倒播至開始','彩色正播，然後暫停','只做一次正播'],a:1},
+      {q:'部位一體化的第一步是什麼？',opts:['立刻讓雙手合起來','找出矛盾/衝突和引起衝突的「部位」','設定心錨','測試新行為'],a:1},
+      {q:'在快速恐懼症治療中，處理恐懼前要確認什麼？',opts:['恐懼存在多久了','當事人的恐懼沒有保護作用（生態平衡）','恐懼的強度','恐懼的種類'],a:1},
+      {q:'「家庭治療模式」認為關係破裂主要基於什麼原因？',opts:['性格不合','錯誤的心錨和沒有被滿足的策略','溝通不足','外在環境因素'],a:1},
+      {q:'在NLP治療模式中，「模擬未來」（Future Pace）是在哪個階段進行？',opts:['在搖動內心世界後','在改變行為之後，作為最後確認步驟','在建立親和力後','在尋究策略時'],a:1},
+      {q:'書中NLP治療模式的五個主要階段不包括以下哪項？',opts:['了解內心世界','搖動內心世界','改變行為技巧','永久消除所有記憶'],a:3},
+    ]
+  },
+];
+
+// ═══════════════════════════════════════
+// GAME STATE
+// ═══════════════════════════════════════
+let gs = {};
+let unlockedChapters = [0];
+let chapterScores = {};
+
+function saveProgress() {
+  try {
+    localStorage.setItem('nlp_unlocked', JSON.stringify(unlockedChapters));
+    localStorage.setItem('nlp_scores', JSON.stringify(chapterScores));
+  } catch(e){}
+}
+function loadProgress() {
+  try {
+    const u = localStorage.getItem('nlp_unlocked');
+    const s = localStorage.getItem('nlp_scores');
+    if (u) unlockedChapters = JSON.parse(u);
+    if (s) chapterScores = JSON.parse(s);
+  } catch(e){}
+}
+
+// ═══════════════════════════════════════
+// CHAPTER SELECT
+// ═══════════════════════════════════════
+function renderChapterSelect() {
+  document.getElementById('chapterSelect').style.display = 'block';
+  document.getElementById('gameScreen').style.display = 'none';
+  const grid = document.getElementById('chGrid');
+  grid.innerHTML = '';
+  CHAPTERS.forEach((ch, i) => {
+    const unlocked = unlockedChapters.includes(i);
+    const done = chapterScores[i] !== undefined;
+    const score = chapterScores[i] || 0;
+    const card = document.createElement('div');
+    card.className = 'ch-card' + (!unlocked ? ' locked' : '') + (done ? ' done' : '');
+    card.innerHTML = `
+      <div class="ch-icon">${ch.icon}</div>
+      <div class="ch-info">
+        <div class="ch-num">第 ${i+1} 章</div>
+        <div class="ch-name">${ch.name}</div>
+        <div class="ch-eng">${ch.eng}</div>
+      </div>
+      <div class="ch-status${done ? ' done' : !unlocked ? ' locked-txt' : ''}">
+        ${done ? `✅ 最高：${score}分` : !unlocked ? '🔒 未解鎖' : '▶ 開始'}
+      </div>`;
+    if (unlocked) card.onclick = () => startChapter(i);
+    grid.appendChild(card);
+  });
+}
+
+function startChapter(idx) {
+  const ch = CHAPTERS[idx];
+  gs = {
+    chIdx: idx, ch,
+    deck: shuffle([...ch.qs]),
+    qi: 0, score: 0, xp: 0, level: 1,
+    streak: 0, bestStreak: 0, lives: 3,
+    hints: 3, multRemaining: 0,
+    totalCorrect: 0, totalAnswered: 0,
+    answered: false, eliminated: [],
+    speedMode: false, timeLeft: 12, speedTimer: null,
+    questionsUntilEvent: rand(3, 5),
+    pendingEvent: false,
+    dotResults: [],
+  };
+  document.getElementById('chapterSelect').style.display = 'none';
+  document.getElementById('gameScreen').style.display = 'block';
+  document.getElementById('gsTitle').textContent = `${ch.icon} ${ch.name}`;
+  document.getElementById('chComplete').classList.remove('show');
+  document.getElementById('chComplete').style.display = 'none';
+  hideEl('flipGame'); hideEl('sortGame');
+  showEl('qCard'); showEl('actBar', true);
+  updateUI();
+  renderDots();
+  loadQ();
+}
+
+function backToMenu() {
+  if (gs.speedMode) stopTimer();
+  renderChapterSelect();
+}
+
+// ═══════════════════════════════════════
+// QUESTIONS
+// ═══════════════════════════════════════
+function renderDots() {
+  const dots = document.getElementById('qDots');
+  dots.innerHTML = '';
+  const total = gs.ch.qs.length;
+  for (let i = 0; i < total; i++) {
+    const d = document.createElement('div');
+    d.className = 'q-dot' + (i === gs.qi ? ' current' : '');
+    if (gs.dotResults[i] === 'correct') d.className = 'q-dot done';
+    else if (gs.dotResults[i] === 'wrong') d.className = 'q-dot wrong';
+    dots.appendChild(d);
+  }
+}
+
+function loadQ() {
+  if (gs.qi >= gs.deck.length) {
+    // Shuffle remaining and continue (or show chapter complete if all answered)
+    if (gs.totalAnswered >= gs.ch.qs.length) { showChapterComplete(); return; }
+    gs.deck = shuffle([...gs.ch.qs]);
+    gs.qi = 0;
+  }
+  const q = gs.deck[gs.qi];
+  gs.answered = false; gs.eliminated = [];
+
+  const card = document.getElementById('qCard');
+  card.className = gs.speedMode ? 'speed' : gs.multRemaining > 0 ? 'dbl' : '';
+  document.getElementById('qNum').textContent = `第${gs.qi+1}題`;
+  document.getElementById('qText').textContent = q.q;
+
+  const badge = document.getElementById('qBadge');
+  badge.textContent = gs.ch.name;
+  badge.className = 'q-badge' + (gs.speedMode ? ' rd' : gs.multRemaining > 0 ? ' gd' : '');
+
+  const tag = document.getElementById('eventTag');
+  if (gs.speedMode) { tag.textContent = '⚡ 速度挑戰 — 越快越多分！'; tag.style.color='var(--red)'; }
+  else if (gs.multRemaining > 0) { tag.textContent = `💎 雙倍積分 — 剩餘 ${gs.multRemaining} 題`; tag.style.color='var(--gold)'; }
+  else tag.textContent = '';
+
+  const opts = document.getElementById('opts');
+  opts.innerHTML = '';
+  q.opts.forEach((o, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.innerHTML = `<span class="opt-ltr">${['甲','乙','丙','丁'][i]}</span>${o}`;
+    btn.onclick = () => answer(i);
+    opts.appendChild(btn);
+  });
+  document.getElementById('feedback').textContent = '';
+  updateHintBtn();
+  if (gs.speedMode) startTimer();
+  renderDots();
+}
+
+function answer(sel) {
+  if (gs.answered) return;
+  gs.answered = true;
+  if (gs.speedMode) stopTimer();
+
+  const q = gs.deck[gs.qi];
+  const correct = sel === q.a;
+  document.querySelectorAll('.opt').forEach((b, i) => {
+    b.disabled = true;
+    if (i === q.a) b.classList.add('correct');
+    else if (i === sel) b.classList.add('wrong');
+    else b.classList.add('reveal');
+  });
+
+  gs.totalAnswered++;
+  const fb = document.getElementById('feedback');
+
+  if (correct) {
+    gs.totalCorrect++;
+    gs.streak++;
+    if (gs.streak > gs.bestStreak) gs.bestStreak = gs.streak;
+    gs.dotResults[gs.qi] = 'correct';
+
+    let xp = 30;
+    if (gs.speedMode) xp = 20 + Math.round((gs.timeLeft/12)*30);
+    if (gs.multRemaining > 0) { xp *= 2; gs.multRemaining--; }
+    if (gs.streak >= 5) xp += 15;
+    else if (gs.streak >= 3) xp += 10;
+
+    gs.score += xp;
+    addXP(xp);
+    flash('rgba(46,204,113,0.18)');
+    floatXP(`+${xp}分`, '#2ecc71');
+    if (gs.streak >= 3) floatXP(`🔥 ${gs.streak}連勝！`, '#f39c12', 40);
+    spawnConfetti();
+    fb.style.color = 'var(--green)';
+    fb.textContent = gs.streak >= 5 ? `🔥 超強！${gs.streak}連勝！` :
+                     gs.streak >= 3 ? `🔥 ${gs.streak}連勝加分！` : '✓ 正確！';
+  } else {
+    gs.streak = 0;
+    gs.lives--;
+    gs.dotResults[gs.qi] = 'wrong';
+    flash('rgba(231,76,60,0.2)');
+    shakeCard();
+    floatXP('−1 ❤️', '#e74c3c');
+    fb.style.color = 'var(--red)';
+    fb.textContent = `✗ 答錯了！正確答案：${q.opts[q.a]}`;
+  }
+
+  updateUI();
+  renderDots();
+
+  if (gs.lives <= 0) { setTimeout(showChapterComplete, 1500); return; }
+
+  // Check if all questions answered
+  if (gs.totalAnswered >= gs.ch.qs.length) {
+    setTimeout(showChapterComplete, 1500);
+    return;
+  }
+
+  gs.qi++;
+  gs.questionsUntilEvent--;
+
+  if (gs.questionsUntilEvent <= 0 && !gs.speedMode && gs.totalAnswered < gs.ch.qs.length - 1) {
+    setTimeout(triggerEvent, 1300);
+  } else {
+    setTimeout(loadQ, 1500);
+  }
+}
+
+// ═══════════════════════════════════════
+// RANDOM EVENTS
+// ═══════════════════════════════════════
+function triggerEvent() {
+  const events = ['speed','doublexp','flip','sort'];
+  const e = events[Math.floor(Math.random() * events.length)];
+  gs.questionsUntilEvent = rand(3, 6);
+
+  if (e === 'speed') {
+    showBanner('⚡ 速度挑戰！越快作答，得分越高！', 'speed');
+    gs.speedMode = true;
+    setTimeout(() => { hideBanner(); loadQ(); }, 2200);
+  } else if (e === 'doublexp') {
+    showBanner('💎 雙倍積分！接下來3題分數加倍！', 'gold');
+    gs.multRemaining = 3;
+    setTimeout(() => { hideBanner(); loadQ(); }, 2200);
+  } else if (e === 'flip') {
+    showBanner('🃏 配對挑戰！配對NLP詞彙，贏取額外分數！', 'blue');
+    setTimeout(() => { hideBanner(); startFlip(); }, 2200);
+  } else if (e === 'sort') {
+    showBanner('⚡ 分類挑戰！將NLP概念分類，贏取分數！', 'purple');
+    setTimeout(() => { hideBanner(); startSort(); }, 2200);
+  }
+}
+
+// ═══════════════════════════════════════
+// SPEED TIMER
+// ═══════════════════════════════════════
+function startTimer() {
+  gs.timeLeft = 12;
+  const wrap = document.getElementById('timerWrap');
+  const bar = document.getElementById('timerBar');
+  wrap.style.display = 'block';
+  bar.style.width = '100%';
+  bar.classList.add('tpulse');
+  gs.speedTimer = setInterval(() => {
+    gs.timeLeft -= 0.1;
+    const pct = Math.max(0, (gs.timeLeft/12)*100);
+    bar.style.width = pct+'%';
+    bar.style.background = pct>50 ? 'var(--green)' : pct>25 ? 'var(--gold)' : 'var(--red)';
+    if (gs.timeLeft <= 0 && !gs.answered) { stopTimer(); answer(-1); }
+  }, 100);
+}
+function stopTimer() {
+  clearInterval(gs.speedTimer);
+  gs.speedMode = false;
+  document.getElementById('timerWrap').style.display = 'none';
+  document.getElementById('timerBar').classList.remove('tpulse');
+}
+
+// ═══════════════════════════════════════
+// FLIP MINI-GAME
+// ═══════════════════════════════════════
+function startFlip() {
+  hideEl('qCard'); hideEl('actBar'); showEl('flipGame');
+  const pairs = shuffle([...gs.ch.flipPairs]).slice(0, 4);
+  const reward = 180;
+  document.getElementById('flipReward').textContent = `+${reward}`;
+  const cards = shuffle([
+    ...pairs.map((p,i) => ({text:p[0], pid:i})),
+    ...pairs.map((p,i) => ({text:p[1], pid:i}))
+  ]);
+  const grid = document.getElementById('flipGrid');
+  grid.innerHTML = '';
+  document.getElementById('flipFb').textContent = '';
+  let flipped=[], matched=0, locked=false;
+  cards.forEach(card => {
+    const el = document.createElement('div');
+    el.className = 'fc';
+    el.innerHTML = `<div class="fc-f"></div><div class="fc-b">${card.text}</div>`;
+    el.addEventListener('click', () => {
+      if (locked || el.classList.contains('flipped') || el.classList.contains('matched')) return;
+      el.classList.add('flipped');
+      flipped.push({el, card});
+      if (flipped.length===2) {
+        locked = true;
+        setTimeout(() => {
+          if (flipped[0].card.pid === flipped[1].card.pid) {
+            flipped.forEach(f => f.el.classList.add('matched'));
+            matched++;
+            const flipFb = document.getElementById('flipFb');
+            flipFb.style.color = 'var(--green)';
+            flipFb.textContent = matched<4 ? `✓ 配對成功！還剩 ${4-matched} 對` : `🎉 全部配對！+${reward}分`;
+            if (matched===4) {
+              addXP(reward); gs.score += reward;
+              floatXP(`+${reward}分`, '#3498db');
+              spawnConfetti(); updateUI();
+              setTimeout(endFlip, 1600);
+            }
+          } else {
+            flipped.forEach(f => f.el.classList.remove('flipped'));
+            document.getElementById('flipFb').style.color='var(--red)';
+            document.getElementById('flipFb').textContent='不配對，再試試！';
+          }
+          flipped=[]; locked=false;
+        }, 900);
+      }
+    });
+    grid.appendChild(el);
+  });
+  setTimeout(() => { if (document.getElementById('flipGame').style.display!=='none') endFlip(); }, 32000);
+}
+function endFlip() { hideEl('flipGame'); showEl('qCard'); showEl('actBar', true); loadQ(); }
+
+// ═══════════════════════════════════════
+// SORT MINI-GAME
+// ═══════════════════════════════════════
+let selChip = null;
+function startSort() {
+  hideEl('qCard'); hideEl('actBar'); showEl('sortGame');
+  const sc = gs.ch.sortChallenge;
+  document.getElementById('sortTitle').textContent = `⚡ ${sc.title}`;
+  document.getElementById('sortSub').textContent = sc.sub;
+  document.getElementById('sortFb').textContent = '';
+  selChip = null;
+
+  const allItems = Object.values(sc.correct).flat();
+  const correct = {};
+  Object.entries(sc.correct).forEach(([bin, items]) => items.forEach(item => correct[item]=bin));
+  gs.sortCorrect = correct;
+  gs.sortUserBins = {};
+  sc.bins.forEach(b => gs.sortUserBins[b] = []);
+
+  const pool = document.getElementById('sortPool');
+  pool.innerHTML = '';
+  shuffle([...allItems]).forEach(item => {
+    const chip = document.createElement('div');
+    chip.className = 's-chip';
+    chip.textContent = item;
+    chip.dataset.item = item;
+    chip.onclick = () => {
+      if (chip.dataset.placed==='true') return;
+      document.querySelectorAll('.s-chip.sel').forEach(c=>c.classList.remove('sel'));
+      if (selChip===chip) { selChip=null; return; }
+      chip.classList.add('sel'); selChip=chip;
+    };
+    pool.appendChild(chip);
+  });
+
+  const bins = document.getElementById('sortBins');
+  bins.innerHTML = '';
+  sc.bins.forEach(binLabel => {
+    const bin = document.createElement('div');
+    bin.className = 's-bin';
+    bin.dataset.bin = binLabel;
+    bin.innerHTML = `<h3>${binLabel}</h3><div class="s-bin-chips" id="sbc-${encodeB(binLabel)}"></div>`;
+    bin.onclick = (e) => { if (!e.target.classList.contains('s-bin-chip')) dropBin(binLabel); };
+    bins.appendChild(bin);
+  });
+}
+
+function encodeB(s) { return s.replace(/[^a-zA-Z0-9]/g,'_'); }
+
+function dropBin(binLabel) {
+  if (!selChip) return;
+  const item = selChip.dataset.item;
+  const prevBin = selChip.dataset.placedBin;
+  if (prevBin) {
+    gs.sortUserBins[prevBin] = gs.sortUserBins[prevBin].filter(x=>x!==item);
+    const prevEl = document.getElementById(`sbc-${encodeB(prevBin)}`);
+    if (prevEl) { const old=prevEl.querySelector(`[data-item="${item}"]`); if(old) old.remove(); }
+  }
+  gs.sortUserBins[binLabel].push(item);
+  selChip.dataset.placedBin = binLabel;
+  selChip.dataset.placed = 'true';
+  selChip.classList.remove('sel');
+  selChip.style.display = 'none';
+  const bEl = document.getElementById(`sbc-${encodeB(binLabel)}`);
+  const bc = document.createElement('div');
+  bc.className = 's-bin-chip'; bc.textContent = item; bc.dataset.item = item;
+  bc.onclick = () => returnChip(item, binLabel);
+  bEl.appendChild(bc);
+  selChip = null;
+}
+
+function returnChip(item, binLabel) {
+  const chip = document.querySelector(`.s-chip[data-item="${item}"]`);
+  if (chip) { chip.style.display=''; chip.dataset.placed='false'; chip.dataset.placedBin=''; }
+  gs.sortUserBins[binLabel] = gs.sortUserBins[binLabel].filter(x=>x!==item);
+  const bEl = document.getElementById(`sbc-${encodeB(binLabel)}`);
+  if (bEl) { const el=bEl.querySelector(`[data-item="${item}"]`); if(el) el.remove(); }
+}
+
+function checkSort() {
+  const {sortCorrect, sortUserBins} = gs;
+  let right=0, total=Object.keys(sortCorrect).length;
+  Object.entries(sortUserBins).forEach(([bin,items]) => {
+    items.forEach(item => { if(sortCorrect[item]===bin) right++; });
+  });
+  const xp = Math.round((right/total)*120);
+  const fb = document.getElementById('sortFb');
+  if (right===total) {
+    fb.style.color='var(--green)'; fb.textContent=`🎉 全部正確！+${xp}分`;
+    spawnConfetti();
+  } else {
+    fb.style.color=right>total/2?'var(--gold)':'var(--red)';
+    fb.textContent=`${right}/${total} 正確。+${xp}分`;
+  }
+  if (xp>0) { addXP(xp); gs.score+=xp; floatXP(`+${xp}分`, '#9b59b6'); updateUI(); }
+  setTimeout(endSort, 2200);
+}
+function endSort() { hideEl('sortGame'); showEl('qCard'); showEl('actBar',true); loadQ(); }
+
+// ═══════════════════════════════════════
+// HINTS
+// ═══════════════════════════════════════
+function useHint() {
+  if (gs.score < 50 || gs.hints <= 0 || gs.answered) return;
+  const q = gs.deck[gs.qi];
+  const btns = document.querySelectorAll('.opt');
+  const wrongs = shuffle([0,1,2,3].filter(i=>i!==q.a&&!gs.eliminated.includes(i)));
+  wrongs.slice(0,2).forEach(i=>{btns[i].classList.add('dim');btns[i].disabled=true;gs.eliminated.push(i);});
+  gs.score = Math.max(0, gs.score-50);
+  gs.hints--;
+  floatXP('−50分', '#aaa');
+  updateUI(); updateHintBtn();
+}
+function updateHintBtn() {
+  const btn = document.getElementById('hintBtn');
+  btn.disabled = gs.score < 50 || gs.hints <= 0 || gs.answered;
+  document.getElementById('hintsVal').textContent = gs.hints;
+}
+
+// ═══════════════════════════════════════
+// XP & LEVEL
+// ═══════════════════════════════════════
+function addXP(amt) {
+  gs.xp += amt;
+  const cap = gs.level * 150;
+  if (gs.xp >= cap) { gs.xp -= cap; gs.level++; }
+}
+
+// ═══════════════════════════════════════
+// CHAPTER COMPLETE
+// ═══════════════════════════════════════
+function showChapterComplete() {
+  hideEl('qCard'); hideEl('actBar');
+  if (gs.speedMode) stopTimer();
+  const acc = gs.totalAnswered>0 ? Math.round(gs.totalCorrect/gs.totalAnswered*100) : 0;
+  const grade = acc>=90?'S':acc>=80?'A':acc>=70?'B':acc>=60?'C':'D';
+  const icons = {S:'🏆',A:'⭐',B:'😊',C:'😐',D:'💪'};
+  const prevBest = chapterScores[gs.chIdx] || 0;
+  if (gs.score > prevBest) chapterScores[gs.chIdx] = gs.score;
+  // Unlock next chapter
+  if (gs.chIdx+1 < CHAPTERS.length && !unlockedChapters.includes(gs.chIdx+1)) {
+    unlockedChapters.push(gs.chIdx+1);
+  }
+  saveProgress();
+  document.getElementById('ccIcon').textContent = icons[grade]||'🎉';
+  document.getElementById('ccTitle').textContent = `第${gs.chIdx+1}章完成！`;
+  document.getElementById('ccScore').textContent = gs.score;
+  document.getElementById('ccCorrect').textContent = `${gs.totalCorrect}/${gs.ch.qs.length}`;
+  document.getElementById('ccAcc').textContent = acc+'%';
+  document.getElementById('ccStreak').textContent = gs.bestStreak;
+  document.getElementById('ccGrade').textContent = grade;
+  const nextBtn = document.getElementById('nextChBtn');
+  if (gs.chIdx+1 < CHAPTERS.length) {
+    nextBtn.textContent = `第${gs.chIdx+2}章 →`;
+    nextBtn.style.display = '';
+  } else {
+    nextBtn.textContent = '🏆 課程完成！';
+  }
+  const cc = document.getElementById('chComplete');
+  cc.style.display = 'block';
+  cc.classList.add('show');
+  spawnConfetti(); spawnConfetti();
+  // Level up banner if unlocked next
+  if (gs.chIdx+1 < CHAPTERS.length && !chapterScores[gs.chIdx+1]) {
+    setTimeout(() => showLU(gs.chIdx+1), 800);
+  }
+}
+
+function retryChapter() { startChapter(gs.chIdx); }
+function nextChapter() {
+  const next = gs.chIdx+1;
+  if (next < CHAPTERS.length) startChapter(next);
+  else backToMenu();
+}
+
+let showingLU = false;
+function showLU(nextIdx) {
+  showingLU = true;
+  const nextCh = CHAPTERS[nextIdx];
+  document.getElementById('luTitle').textContent = '🎓 解鎖新章節！';
+  document.getElementById('luNext').textContent = `${nextCh.icon} ${nextCh.name}`;
+  document.getElementById('luDesc').textContent = nextCh.eng;
+  document.getElementById('luXp').textContent = `+200 獎勵積分`;
+  gs.score += 200;
+  document.getElementById('luOverlay').classList.add('show');
+}
+function dismissLU() {
+  document.getElementById('luOverlay').classList.remove('show');
+  showingLU = false;
+}
+
+// ═══════════════════════════════════════
+// UPDATE UI
+// ═══════════════════════════════════════
+function updateUI() {
+  document.getElementById('scoreVal').textContent = gs.score;
+  document.getElementById('gsLvl').textContent = gs.level;
+  const hearts = '❤️'.repeat(gs.lives) + '🖤'.repeat(Math.max(0,3-gs.lives));
+  document.getElementById('livesVal').textContent = hearts;
+  const acc = gs.totalAnswered>0 ? Math.round(gs.totalCorrect/gs.totalAnswered*100)+'%' : '—';
+  document.getElementById('accVal').textContent = acc;
+  document.getElementById('hintsVal').textContent = gs.hints;
+  const cap = gs.level*150;
+  document.getElementById('xpLabel').textContent = `${gs.xp} / ${cap}`;
+  document.getElementById('xpFill').style.width = Math.min(100,(gs.xp/cap)*100)+'%';
+  const sb = document.getElementById('streakBadge');
+  document.getElementById('streakNum').textContent = gs.streak;
+  if (!gs.streak) { sb.style.display='none'; }
+  else { sb.style.display='flex'; sb.className=gs.streak>=5?'fire':gs.streak>=3?'hot':''; }
+}
+
+// ═══════════════════════════════════════
+// EFFECTS
+// ═══════════════════════════════════════
+function flash(color) {
+  const f=document.getElementById('flash');
+  f.style.background=color; f.style.opacity=1;
+  setTimeout(()=>f.style.opacity=0,180);
+}
+function shakeCard() {
+  const c=document.getElementById('qCard');
+  c.style.animation='shake 0.4s ease';
+  setTimeout(()=>c.style.animation='',400);
+}
+function floatXP(text, color, xOff=0) {
+  const el=document.createElement('div');
+  el.className='float-xp'; el.textContent=text; el.style.color=color;
+  el.style.left=`calc(50% + ${xOff}px)`; el.style.top=`${160+Math.random()*80}px`;
+  el.style.transform='translateX(-50%)';
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1300);
+}
+function spawnConfetti() {
+  const colors=['#FF6B35','#2ecc71','#f39c12','#3498db','#9b59b6','#1abc9c'];
+  for (let i=0;i<18;i++) {
+    const el=document.createElement('div');
+    const dx=(Math.random()-.5)*230, dy=-(60+Math.random()*130), dr=(Math.random()-.5)*900;
+    const id='c'+Date.now()+i;
+    const s=document.createElement('style');
+    s.textContent=`@keyframes ${id}{0%{transform:translate(0,0)rotate(0);opacity:1}100%{transform:translate(${dx}px,${dy}px)rotate(${dr}deg);opacity:0}}`;
+    el.style.cssText=`position:fixed;width:${6+Math.random()*7}px;height:${6+Math.random()*7}px;border-radius:${Math.random()>.5?'50%':'2px'};background:${colors[i%colors.length]};left:${25+Math.random()*50}%;top:36%;pointer-events:none;z-index:9998;animation:${id} ${0.6+Math.random()*0.6}s ease-out forwards;`;
+    document.head.appendChild(s); document.body.appendChild(el);
+    setTimeout(()=>{el.remove();s.remove();},1400);
+  }
+}
+function showBanner(text, type) {
+  const b=document.getElementById('eventBanner');
+  b.textContent=text; b.className=`show ${type}`;
+}
+function hideBanner() { document.getElementById('eventBanner').className=''; }
+
+// ═══════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════
+function showEl(id, flex=false) { document.getElementById(id).style.display=flex?'flex':'block'; }
+function hideEl(id) { document.getElementById(id).style.display='none'; }
+function shuffle(a) { return a.sort(()=>Math.random()-.5); }
+function rand(a,b) { return Math.floor(Math.random()*(b-a+1))+a; }
+
+// START
+loadProgress();
+renderChapterSelect();
+</script>
+</body>
+</html>
